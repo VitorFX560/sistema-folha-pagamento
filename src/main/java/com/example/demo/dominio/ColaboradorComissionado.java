@@ -3,23 +3,35 @@ package com.example.demo.dominio;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
 import jakarta.validation.constraints.PositiveOrZero;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
-@Data
-@EqualsAndHashCode(callSuper = true)
-@Entity 
+@Entity
 @DiscriminatorValue("COMISSIONADO")
 public class ColaboradorComissionado extends Colaborador {
 
-    @PositiveOrZero 
+    @PositiveOrZero
     private BigDecimal valorVendas = BigDecimal.ZERO;
 
-    @PositiveOrZero 
+    @PositiveOrZero
     private BigDecimal percentualComissao = BigDecimal.ZERO;
+
+    // GETTERS E SETTERS MANUAIS
+    public BigDecimal getValorVendas() {
+        return valorVendas;
+    }
+
+    public void setValorVendas(BigDecimal valorVendas) {
+        this.valorVendas = valorVendas;
+    }
+
+    public BigDecimal getPercentualComissao() {
+        return percentualComissao;
+    }
+
+    public void setPercentualComissao(BigDecimal percentualComissao) {
+        this.percentualComissao = percentualComissao;
+    }
 
     @Override
     public BigDecimal calcularSalarioFinal() {

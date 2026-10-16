@@ -1,41 +1,62 @@
-
 package com.example.demo.dominio;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.PositiveOrZero;
-import lombok.Data;
 import java.math.BigDecimal;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
-import lombok.NoArgsConstructor;
 
-@Data
-@NoArgsConstructor
 @Entity
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "tipo_colaborador", discriminatorType = DiscriminatorType.STRING)
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "tipo_colaborador")
+@Inheritance(strategy = InheritanceType.JOINED)
+// ---------------------------------------------------------
+// Ensina o Java a converter o JSON na classe correta
+// ---------------------------------------------------------
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "tipo")
 @JsonSubTypes({
-    @JsonSubTypes.Type(value = ColaboradorComissionado.class, name = "COMISSIONADO"),
-    @JsonSubTypes.Type(value = ColaboradorPadrao.class, name = "PADRAO"),
-    @JsonSubTypes.Type(value = ColaboradorProducao.class, name = "PRODUCAO")
+    @JsonSubTypes.Type(value = ColaboradorPadrao.class, name = "Padrao"),
+    @JsonSubTypes.Type(value = ColaboradorComissionado.class, name = "Comissionado"),
+    @JsonSubTypes.Type(value = ColaboradorProducao.class, name = "Producao")
 })
 public abstract class Colaborador {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long matricula;
+    @Column(unique = true, nullable = false)
+    private String matricula;
 
-    @NotBlank(message = "O nome do colaborador é obrigatório.")
     @Column(nullable = false)
     private String nome;
 
-    @NotNull(message = "O salário base é obrigatório.")
-    @PositiveOrZero 
-    @Column(nullable = false)
     private BigDecimal salarioBase;
 
+    // ==========================================
+    // GETTERS E SETTERS MANUAIS
+    // ==========================================
+
+    public String getMatricula() {
+        return matricula;
+    }
+
+    public void setMatricula(String matricula) {
+        this.matricula = matricula;
+    }
+
+    public String getNome() {
+        return nome;
+    }
+
+    public void setNome(String nome) {
+        this.nome = nome;
+    }
+
+    public BigDecimal getSalarioBase() {
+        return salarioBase;
+    }
+
+    public void setSalarioBase(BigDecimal salarioBase) {
+        this.salarioBase = salarioBase;
+    }
+
+    // ==========================================
+    // MÉTODO ABSTRATO DE CÁLCULO
+    // ==========================================
     public abstract BigDecimal calcularSalarioFinal();
 }
