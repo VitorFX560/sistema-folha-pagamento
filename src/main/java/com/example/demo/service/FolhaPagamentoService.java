@@ -43,24 +43,25 @@ public class FolhaPagamentoService {
     public List<RelatorioFolhaIndividual> gerarFolhaDePagamento(String periodoReferencia) {
         List<Colaborador> colaboradores = repositorio.findAll();
 
-        // 1. Trava de segurança: Verifica se a folha desse mês já existe
+        // 1. Verifica se a folha desse mês já existe
         List<FolhaProcessada> folhaExistente = folhaRepositorio.findByPeriodoReferencia(periodoReferencia);
-        if (!folhaExistente.isEmpty()) {
-            throw new RuntimeException("A folha para o período " + periodoReferencia + " já foi processada.");
+        
+        // 2. Se a folha AINDA NÃO existir, fazemos a gravação ("Fotografia") no banco
+        if (folhaExistente.isEmpty()) {
+            for (Colaborador c : colaboradores) {
+                FolhaProcessada registro = new FolhaProcessada();
+                registro.setPeriodoReferencia(periodoReferencia);
+                registro.setMatriculaColaborador(c.getMatricula());
+                registro.setNomeColaborador(c.getNome());
+                registro.setTipoColaborador(c.getClass().getSimpleName());
+                registro.setSalarioFinal(c.calcularSalarioFinal());
+                registro.setDataProcessamento(LocalDateTime.now());
+                
+                folhaRepositorio.save(registro);
+            }
         }
-
-        // 2. Salva a "Fotografia" (Histórico) de cada colaborador
-        for (Colaborador c : colaboradores) {
-            FolhaProcessada registro = new FolhaProcessada();
-            registro.setPeriodoReferencia(periodoReferencia);
-            registro.setMatriculaColaborador(c.getMatricula());
-            registro.setNomeColaborador(c.getNome());
-            registro.setTipoColaborador(c.getClass().getSimpleName());
-            registro.setSalarioFinal(c.calcularSalarioFinal());
-            registro.setDataProcessamento(LocalDateTime.now());
-            
-            folhaRepositorio.save(registro);
-        }
+        // Nota: Se já existir (!isEmpty), o código simplesmente ignora o 'save' e avança, 
+        // em vez de dar o throw new RuntimeException que causava o Erro 500.
 
         // 3. Devolve a lista para o front-end
         return colaboradores.stream()
