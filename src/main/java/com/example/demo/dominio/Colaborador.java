@@ -53,8 +53,8 @@ public abstract class Colaborador {
         this.salarioBase = salarioBase;
     }
 
-    // ==========================================
+    
     // MÉTODO ABSTRATO DE CÁLCULO
-    // ==========================================
+    
     public abstract BigDecimal calcularSalarioFinal();
 }
