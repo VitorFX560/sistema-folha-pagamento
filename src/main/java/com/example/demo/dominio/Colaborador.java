@@ -7,9 +7,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
-// ---------------------------------------------------------
-// Ensina o Java a converter o JSON na classe correta
-// ---------------------------------------------------------
+
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, include = JsonTypeInfo.As.PROPERTY, property = "tipo")
 @JsonSubTypes({
     @JsonSubTypes.Type(value = ColaboradorPadrao.class, name = "Padrao"),
@@ -27,9 +25,9 @@ public abstract class Colaborador {
 
     private BigDecimal salarioBase;
 
-    // ==========================================
-    // GETTERS E SETTERS MANUAIS
-    // ==========================================
+    
+    // GETTERS E SETTERS 
+    
 
     public String getMatricula() {
         return matricula;

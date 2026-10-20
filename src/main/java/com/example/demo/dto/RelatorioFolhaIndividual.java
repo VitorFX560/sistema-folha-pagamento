@@ -12,11 +12,11 @@ public class RelatorioFolhaIndividual {
     private BigDecimal salarioBase;
     private BigDecimal salarioFinal;
     
-    // Construtor vazio (Faz o papel do @NoArgsConstructor de forma nativa)
+    
     public RelatorioFolhaIndividual() {
     }
 
-    // Construtor completo (Faz o papel do @AllArgsConstructor de forma nativa)
+    
     public RelatorioFolhaIndividual(String matricula, String nome, String tipoColaborador, BigDecimal salarioBase, BigDecimal salarioFinal) {
         this.matricula = matricula;
         this.nome = nome;
