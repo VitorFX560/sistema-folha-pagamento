@@ -1,37 +1,62 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { Activity, ArrowDownLeft, ArrowRight, Banknote, BriefcaseBusiness, Check, ChevronDown, CircleHelp, FileBarChart2, LayoutDashboard, Menu, Plus, RefreshCw, Search, Trash2, UsersRound, X, Edit2, Save } from 'lucide-react';
-import { api, ApiError } from './api';
+import { Activity, ArrowDownLeft, ArrowRight, Banknote, BriefcaseBusiness, Check, ChevronDown, CircleHelp, FileBarChart2, LayoutDashboard, LogOut, Menu, Plus, RefreshCw, Search, Trash2, UsersRound, X, Edit2, Save } from 'lucide-react';
+import { api, ApiError, authStorage, type UsuarioLogado } from './api';
+import { Login } from './Login';
 import type { Colaborador, ItemFolha, NovoColaborador, TipoColaborador } from './types';
 
 const money = (value: number | undefined) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value ?? 0);
 const labels: Record<TipoColaborador, string> = { PADRAO: 'Padrão', COMISSIONADO: 'Comissionado', PRODUCAO: 'Produção' };
 
-function kind(value?: string): TipoColaborador { 
+function kind(value?: string): TipoColaborador {
   const val = value || '';
-  if (val.toUpperCase().includes('COMISSIONADO')) return 'COMISSIONADO'; 
-  if (val.toUpperCase().includes('PRODUCAO')) return 'PRODUCAO'; 
-  return 'PADRAO'; 
+  if (val.toUpperCase().includes('COMISSIONADO')) return 'COMISSIONADO';
+  if (val.toUpperCase().includes('PRODUCAO')) return 'PRODUCAO';
+  return 'PADRAO';
 }
 
 const currentMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
 const formatToAPI = (ym: string) => { const [y, m] = ym.split('-'); return `${m}/${y}`; };
 
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api/folha').replace(/\/$/, '');
-
 function App() {
-  const [collapsed, setCollapsed] = useState(false); const [mobileOpen, setMobileOpen] = useState(false);
-  const [toast, setToast] = useState<{ message: string; error: boolean } | null>(null); const location = useLocation(); const navigate = useNavigate();
+  const [user, setUser] = useState<UsuarioLogado | null>(() => authStorage.get());
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [toast, setToast] = useState<{ message: string; error: boolean } | null>(null);
+  const location = useLocation();
+  const navigate = useNavigate();
+
   useEffect(() => { setMobileOpen(false); }, [location.pathname]);
   useEffect(() => { if (!toast) return; const id = window.setTimeout(() => setToast(null), 4500); return () => window.clearTimeout(id); }, [toast]);
+
   const notify = (message: string, error = false) => setToast({ message, error });
+
+  const handleLogin = (loggedUser: UsuarioLogado) => {
+    authStorage.set(loggedUser);
+    setUser(loggedUser);
+    navigate('/');
+  };
+
+  const handleLogout = () => {
+    authStorage.clear();
+    setUser(null);
+    navigate('/');
+  };
+
+  if (!user) {
+    return <Login onLogin={handleLogin} />;
+  }
+
   const title = location.pathname.includes('novo') ? 'Novo colaborador' : location.pathname.includes('colaboradores') ? 'Colaboradores' : location.pathname.includes('folha') ? 'Folha de pagamento' : location.pathname.includes('relatorios') ? 'Relatórios' : 'Visão geral';
-  
+
   return <div className="app-shell">
     {mobileOpen && <button className="scrim" aria-label="Fechar menu" onClick={() => setMobileOpen(false)} />}
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
-      <Link to="/" className="brand"><span className="brand-mark"><Activity size={21}/></span>{!collapsed && <span className="brand-name">folha<span>clara</span></span>}</Link>
-      {!collapsed && <div className="workspace"><div className="workspace-avatar">FC</div><div><b>Folha Clara</b><small>Gestão de pessoas</small></div><ChevronDown size={15}/></div>}
+      <Link to="/" className="brand">
+        <span className="brand-mark"><Activity size={20}/></span>
+        {!collapsed && <span className="brand-name">folha<span>pay</span></span>}
+      </Link>
+      {!collapsed && <div className="workspace"><div className="workspace-avatar">FP</div><div><b>Folha Pay</b><small>Gestão financeira</small></div><ChevronDown size={15}/></div>}
       <p className="nav-caption">MENU PRINCIPAL</p>
       <nav className="nav-list">
         <NavItem to="/" icon={<LayoutDashboard size={18}/>} text="Visão geral" collapsed={collapsed}/>
@@ -43,8 +68,25 @@ function App() {
       <button className="collapse-button" aria-label={collapsed ? 'Expandir menu' : 'Recolher menu'} onClick={() => setCollapsed(!collapsed)}><ArrowDownLeft size={16}/></button>
     </aside>
     <main className="main-area">
-      <header className="topbar"><button className="mobile-menu" aria-label="Abrir menu" onClick={() => setMobileOpen(true)}><Menu size={20}/></button><div className="breadcrumbs"><span>Início</span><span className="crumb-slash">/</span><b>{title}</b></div><div className="topbar-right"><span className="live-status"><i/> API REST</span><span className="today">{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}</span><div className="top-avatar">FC</div></div></header>
-      <div className="page-wrap"><Routes><Route path="/" element={<Dashboard/>} /><Route path="/colaboradores" element={<Colaboradores notify={notify}/>} /><Route path="/colaboradores/novo" element={<Cadastro notify={notify}/>} /><Route path="/folha" element={<Folha/>}/><Route path="/relatorios" element={<Relatorios/>}/><Route path="*" element={<Dashboard/>} /></Routes></div>
+      <header className="topbar">
+        <button className="mobile-menu" aria-label="Abrir menu" onClick={() => setMobileOpen(true)}><Menu size={20}/></button>
+        <div className="breadcrumbs"><span>Início</span><span className="crumb-slash">/</span><b>{title}</b></div>
+        <div className="topbar-right">
+          <span className="live-status"><i/> {user.nome} ({user.role})</span>
+          <span className="today">{new Intl.DateTimeFormat('pt-BR', { dateStyle: 'long' }).format(new Date())}</span>
+          <button className="button secondary small" onClick={handleLogout} title="Sair do sistema"><LogOut size={14}/> Sair</button>
+        </div>
+      </header>
+      <div className="page-wrap">
+        <Routes>
+          <Route path="/" element={<Dashboard/>} />
+          <Route path="/colaboradores" element={<Colaboradores notify={notify}/>} />
+          <Route path="/colaboradores/novo" element={<Cadastro notify={notify}/>} />
+          <Route path="/folha" element={<Folha/>}/>
+          <Route path="/relatorios" element={<Relatorios/>}/>
+          <Route path="*" element={<Dashboard/>} />
+        </Routes>
+      </div>
     </main>
     {toast && <div className={`toast ${toast.error ? 'toast-error' : ''}`} role={toast.error ? 'alert' : 'status'}><span>{toast.error ? <X size={16}/> : <Check size={17}/>}</span>{toast.message}<button aria-label="Fechar notificação" onClick={() => setToast(null)}><X size={16}/></button></div>}
   </div>;
@@ -64,11 +106,11 @@ function StatCard({ title, value, sub, icon, accent = '' }: { title: string; val
 
 function Dashboard() {
   const periodoAPI = useMemo(() => formatToAPI(currentMonth()), []);
-  const sum = useData(() => api.resumo(periodoAPI)); 
+  const sum = useData(() => api.resumo(periodoAPI));
   const detail = useData(() => api.detalhada(periodoAPI));
   const counts = useMemo(() => (detail.data ?? []).reduce((acc, row) => { acc[kind((row as any).tipo || (row as any).tipoColaborador)] += 1; return acc; }, { PADRAO: 0, COMISSIONADO: 0, PRODUCAO: 0 } as Record<TipoColaborador, number>), [detail.data]);
   return <><PageHeading eyebrow="PAINEL EXECUTIVO" title="Visão geral" subtitle="Acompanhe os principais números da folha de pagamento." action={<button className="button secondary" onClick={() => { void sum.reload(); void detail.reload(); }}><RefreshCw size={16}/> Atualizar dados</button>}/>
-    {(sum.error || detail.error) && <ErrorPanel error={sum.error || detail.error} retry={() => { void sum.reload(); void detail.reload(); }}/ >}
+    {(sum.error || detail.error) && <ErrorPanel error={sum.error || detail.error} retry={() => { void sum.reload(); void detail.reload(); }}/>}
     <div className="stats-grid">
       <StatCard title="Total de colaboradores" value={sum.loading || sum.error ? '—' : String((sum.data as any)?.totalColaboradores ?? 0)} sub="Pessoas cadastradas" icon={<UsersRound size={18}/>} accent="blue"/>
       <StatCard title="Valor total da folha" value={sum.loading || sum.error ? '—' : money((sum.data as any)?.valorTotal)} sub="Total calculado pelo backend" icon={<Banknote size={18}/>} accent="green"/>
@@ -88,41 +130,37 @@ function Empty({ title, description, action }: { title: string; description: str
 
 function Colaboradores({ notify }: { notify: (s: string, error?: boolean) => void }) {
   const { data, loading, error, reload } = useData(() => api.colaboradores()); const [search, setSearch] = useState(''); const [filter, setFilter] = useState('TODOS'); const [selected, setSelected] = useState<Colaborador | null>(null);
-  
-  const filtered = useMemo(() => (data ?? []).filter(person => { 
-    const matches = `${person.nome} ${person.matricula}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')); 
+
+  const filtered = useMemo(() => (data ?? []).filter(person => {
+    const matches = `${person.nome} ${person.matricula}`.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR'));
     const pTipo = kind((person as any).tipo || (person as any).tipo_colaborador);
-    return matches && (filter === 'TODOS' || pTipo === filter); 
+    return matches && (filter === 'TODOS' || pTipo === filter);
   }), [data, search, filter]);
 
   return <><PageHeading eyebrow="GESTÃO DE PESSOAS" title="Colaboradores" subtitle="Consulte os cadastros e acompanhe a remuneração da equipe." action={<Link className="button primary" to="/colaboradores/novo"><Plus size={17}/> Novo colaborador</Link>}/>
     <section className="panel table-panel directory"><div className="directory-toolbar"><div className="search-box"><Search size={17}/><input aria-label="Buscar colaborador" placeholder="Buscar por nome ou matrícula..." value={search} onChange={e => setSearch(e.target.value)}/></div><select aria-label="Filtrar por tipo" value={filter} onChange={e => setFilter(e.target.value)}><option value="TODOS">Todos os tipos</option><option value="PADRAO">Padrão</option><option value="COMISSIONADO">Comissionado</option><option value="PRODUCAO">Produção</option></select><button className="icon-button" aria-label="Atualizar colaboradores" onClick={() => void reload()}><RefreshCw size={16}/></button></div>{loading ? <Loading rows={6}/> : error ? <ErrorPanel error={error} retry={() => void reload()}/> : filtered.length ? <div className="table-scroll"><table><thead><tr><th>MATRÍCULA</th><th>COLABORADOR</th><th>TIPO</th><th>SALÁRIO BASE</th><th>REMUNERAÇÃO ADICIONAL</th><th>AÇÕES</th></tr></thead><tbody>{filtered.map(p => <tr key={p.matricula}><td className="id-cell">#{p.matricula}</td><td><div className="person-cell"><span className="person-avatar">{p.nome.slice(0, 1).toUpperCase()}</span><b>{p.nome}</b></div></td>
-      
       <td><Badge type={kind((p as any).tipo || (p as any).tipo_colaborador)}/></td>
-      
       <td>{money(p.salarioBase)}</td><td>{additional(p)}</td><td><button className="row-action" onClick={() => setSelected(p)}>Visualizar</button></td></tr>)}</tbody></table><div className="table-footer">Exibindo <b>{filtered.length}</b> de <b>{data?.length ?? 0}</b> colaboradores</div></div> : <Empty title={data?.length ? 'Nenhum resultado encontrado' : 'Nenhum colaborador cadastrado'} description={data?.length ? 'Tente ajustar a busca ou o filtro selecionado.' : 'Cadastre colaboradores para acompanhar sua folha de pagamento.'} action={!data?.length ? <Link className="button primary" to="/colaboradores/novo"><Plus size={16}/> Cadastrar colaborador</Link> : undefined}/>}</section>
     {selected && <DetailsModal person={selected} onClose={() => setSelected(null)} onRefresh={() => void reload()} notify={notify} />}
   </>;
 }
 
-function additional(person: Colaborador) { 
+function additional(person: Colaborador) {
   const t = kind((person as any).tipo || (person as any).tipo_colaborador);
-  if (t === 'COMISSIONADO') return <span>{money(person.valorVendas)} em vendas <small className="muted">· {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(person.percentualComissao ?? 0)}%</small></span>; 
-  if (t === 'PRODUCAO') return <span>{person.quantidadeProduzida ?? 0} un. <small className="muted">· {money(person.valorPorUnidade)}/un.</small></span>; 
-  return <span className="muted">—</span>; 
+  if (t === 'COMISSIONADO') return <span>{money(person.valorVendas)} em vendas <small className="muted">· {new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 2 }).format(person.percentualComissao ?? 0)}%</small></span>;
+  if (t === 'PRODUCAO') return <span>{person.quantidadeProduzida ?? 0} un. <small className="muted">· {money(person.valorPorUnidade)}/un.</small></span>;
+  return <span className="muted">—</span>;
 }
 
-function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colaborador; onClose: () => void; onRefresh: () => void; notify: (s: string, e?: boolean) => void }) { 
+function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colaborador; onClose: () => void; onRefresh: () => void; notify: (s: string, e?: boolean) => void }) {
   const periodoAPI = useMemo(() => formatToAPI(currentMonth()), []);
-  const { data } = useData(() => api.detalhada(periodoAPI)); 
-  const payroll = data?.find(p => p.matricula === person.matricula); 
-  
+  const { data } = useData(() => api.detalhada(periodoAPI));
+  const payroll = data?.find(p => p.matricula === person.matricula);
+
   const [isEditing, setIsEditing] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  
-  // AQUI É A MÁGICA: O 'type' agora é um Estado (State) em vez de ser estático!
   const [type, setType] = useState<TipoColaborador>(kind((person as any).tipo || (person as any).tipo_colaborador));
-  
+
   const [values, setValues] = useState({
     nome: person.nome,
     salarioBase: String(person.salarioBase),
@@ -132,18 +170,17 @@ function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colabora
     valorPorUnidade: String(person.valorPorUnidade ?? '')
   });
 
-  useEffect(() => { const close = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [onClose]); 
+  useEffect(() => { const close = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', close); return () => window.removeEventListener('keydown', close); }, [onClose]);
 
   const handleDelete = async () => {
     if (!window.confirm(`Tem certeza que deseja excluir permanentemente o colaborador ${person.nome}?`)) return;
     setIsProcessing(true);
     try {
-      const res = await fetch(`${API_URL}/colaboradores/${person.matricula}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error();
+      await api.excluir(String(person.matricula));
       notify('Colaborador excluído com sucesso.');
       onRefresh();
       onClose();
-    } catch (e) {
+    } catch {
       notify('Erro ao excluir colaborador.', true);
       setIsProcessing(false);
     }
@@ -152,8 +189,6 @@ function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colabora
   const handleSave = async () => {
     if (!values.nome.trim() || !values.salarioBase) return notify('Preencha os campos obrigatórios.', true);
     setIsProcessing(true);
-    
-    // O backend Java receberá a nova escolha que estiver ativa no select
     const tipoJava = type === 'PADRAO' ? 'Padrao' : type === 'COMISSIONADO' ? 'Comissionado' : 'Producao';
 
     try {
@@ -165,19 +200,12 @@ function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colabora
         ...(type === 'COMISSIONADO' ? { valorVendas: Number(values.valorVendas), percentualComissao: Number(values.percentualComissao) } : {}),
         ...(type === 'PRODUCAO' ? { quantidadeProduzida: Number(values.quantidadeProduzida), valorPorUnidade: Number(values.valorPorUnidade) } : {})
       };
-      
-      const res = await fetch(`${API_URL}/colaboradores/${person.matricula}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      
-      if (!res.ok) throw new Error();
 
+      await api.atualizar(String(person.matricula), body as unknown as NovoColaborador);
       notify('Dados atualizados com sucesso.');
       onRefresh();
       setIsEditing(false);
-    } catch (e) {
+    } catch {
       notify('Erro ao atualizar os dados.', true);
     } finally {
       setIsProcessing(false);
@@ -194,21 +222,17 @@ function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colabora
       </div>
       <button className="icon-button" onClick={onClose} aria-label="Fechar"><X size={18}/></button>
     </div>
-    
+
     <div className="detail-person">
       <span className="detail-avatar">{values.nome.slice(0, 1).toUpperCase()}</span>
       <div>
         {isEditing ? <input className="edit-title-input" value={values.nome} onChange={e => change('nome', e.target.value)} placeholder="Nome completo" /> : <h3>{person.nome}</h3>}
-        {/* Enquanto edita, o tipo pode mudar. A badge só faz sentido quando em modo leitura */}
         {!isEditing && <Badge type={type}/>}
       </div>
     </div>
-    
+
     <div className="detail-section">
-      <div className="section-header-flex">
-        <b>DADOS CADASTRAIS & REMUNERAÇÃO</b>
-      </div>
-      
+      <div className="section-header-flex"><b>DADOS CADASTRAIS & REMUNERAÇÃO</b></div>
       {!isEditing ? (
         <div className="detail-grid">
           <Detail label="Salário base" value={money(person.salarioBase)}/>
@@ -218,8 +242,6 @@ function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colabora
         </div>
       ) : (
         <div className="form-grid" style={{ marginTop: '10px' }}>
-          
-          {/* NOVO CAMPO: Selecionar Tipo. Ao mudar aqui, os campos em baixo atualizam instantaneamente! */}
           <div className="field full" style={{ gridColumn: '1 / -1' }}>
             <label htmlFor="edit-tipo">Tipo de remuneração</label>
             <select id="edit-tipo" value={type} onChange={e => setType(e.target.value as TipoColaborador)}>
@@ -228,17 +250,14 @@ function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colabora
               <option value="PRODUCAO">Por produção</option>
             </select>
           </div>
-          
           <Field id="edit-salario" label="Salário base" value={values.salarioBase} onChange={v => change('salarioBase', v)} placeholder="0,00" prefix="R$" />
-          
-          {/* Eis a mágica do React: Como o 'type' mudou, estes campos aparecem sozinhos na hora */}
           {type === 'COMISSIONADO' && <><Field id="edit-vendas" label="Valor das vendas" value={values.valorVendas} onChange={v => change('valorVendas', v)} placeholder="0,00" prefix="R$" /><Field id="edit-comissao" label="Percentual de comissão" value={values.percentualComissao} onChange={v => change('percentualComissao', v)} placeholder="0,00" suffix="%" /></>}
           {type === 'PRODUCAO' && <><Field id="edit-qtd" label="Quantidade produzida" value={values.quantidadeProduzida} onChange={v => change('quantidadeProduzida', v)} placeholder="0" /><Field id="edit-unidade" label="Valor por unidade" value={values.valorPorUnidade} onChange={v => change('valorPorUnidade', v)} placeholder="0,00" prefix="R$" /></>}
         </div>
       )}
     </div>
 
-    <div className="modal-actions" style={{ display: 'flex', gap: '10px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+    <div className="modal-actions" style={{ display: 'flex', gap: '10px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
       {!isEditing ? (
         <>
           <button className="button secondary" onClick={() => setIsEditing(true)}><Edit2 size={15}/> Editar</button>
@@ -251,62 +270,62 @@ function DetailsModal({ person, onClose, onRefresh, notify }: { person: Colabora
         </>
       )}
     </div>
-  </section></div>; 
+  </section></div>;
 }
 
 function Detail({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) { return <div className={`detail-item ${strong ? 'strong' : ''}`}><span>{label}</span><b>{value}</b></div>; }
 
 function Cadastro({ notify }: { notify: (s: string, error?: boolean) => void }) {
-  const [type, setType] = useState<TipoColaborador>('PADRAO'); 
-  const [values, setValues] = useState({ matricula: '', nome: '', salarioBase: '', valorVendas: '', percentualComissao: '', quantidadeProduzida: '', valorPorUnidade: '' }); 
-  const [errors, setErrors] = useState<Record<string, string>>({}); 
-  const [sending, setSending] = useState(false); 
+  const [type, setType] = useState<TipoColaborador>('PADRAO');
+  const [values, setValues] = useState({ matricula: '', nome: '', salarioBase: '', valorVendas: '', percentualComissao: '', quantidadeProduzida: '', valorPorUnidade: '' });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [sending, setSending] = useState(false);
   const navigate = useNavigate();
-  
-  const change = (key: keyof typeof values, value: string) => { 
-    setValues(v => ({ ...v, [key]: value })); 
-    setErrors(e => ({ ...e, [key]: '' })); 
+
+  const change = (key: keyof typeof values, value: string) => {
+    setValues(v => ({ ...v, [key]: value }));
+    setErrors(e => ({ ...e, [key]: '' }));
   };
-  
-  const validate = () => { 
-    const result: Record<string, string> = {}; 
+
+  const validate = () => {
+    const result: Record<string, string> = {};
     if (!values.matricula.trim()) result.matricula = 'Informe a matrícula do colaborador.';
-    if (!values.nome.trim()) result.nome = 'Informe o nome do colaborador.'; 
-    if (!values.salarioBase || Number(values.salarioBase) < 0) result.salarioBase = 'Informe um salário base igual ou maior que zero.'; 
-    const required: (keyof typeof values)[] = type === 'COMISSIONADO' ? ['valorVendas', 'percentualComissao'] : type === 'PRODUCAO' ? ['quantidadeProduzida', 'valorPorUnidade'] : []; 
-    for (const key of required) if (values[key] === '' || Number(values[key]) < 0) result[key] = 'Informe um valor igual ou maior que zero.'; 
-    if (type === 'PRODUCAO' && values.quantidadeProduzida && !Number.isInteger(Number(values.quantidadeProduzida))) result.quantidadeProduzida = 'Informe uma quantidade inteira.'; 
-    setErrors(result); 
-    return Object.keys(result).length === 0; 
+    if (!values.nome.trim()) result.nome = 'Informe o nome do colaborador.';
+    if (!values.salarioBase || Number(values.salarioBase) < 0) result.salarioBase = 'Informe um salário base igual ou maior que zero.';
+    const required: (keyof typeof values)[] = type === 'COMISSIONADO' ? ['valorVendas', 'percentualComissao'] : type === 'PRODUCAO' ? ['quantidadeProduzida', 'valorPorUnidade'] : [];
+    for (const key of required) if (values[key] === '' || Number(values[key]) < 0) result[key] = 'Informe um valor igual ou maior que zero.';
+    if (type === 'PRODUCAO' && values.quantidadeProduzida && !Number.isInteger(Number(values.quantidadeProduzida))) result.quantidadeProduzida = 'Informe uma quantidade inteira.';
+    setErrors(result);
+    return Object.keys(result).length === 0;
   };
-  
-  async function submit(e: FormEvent) { 
-    e.preventDefault(); 
-    if (!validate()) return; 
-    
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!validate()) return;
+
     const tipoJava = type === 'PADRAO' ? 'Padrao' : type === 'COMISSIONADO' ? 'Comissionado' : 'Producao';
 
-    const body = { 
+    const body = {
       matricula: values.matricula.trim(),
-      nome: values.nome.trim(), 
-      salarioBase: Number(values.salarioBase), 
+      nome: values.nome.trim(),
+      salarioBase: Number(values.salarioBase),
       tipo: tipoJava,
-      ...(type === 'COMISSIONADO' ? { valorVendas: Number(values.valorVendas), percentualComissao: Number(values.percentualComissao) } : {}), 
-      ...(type === 'PRODUCAO' ? { quantidadeProduzida: Number(values.quantidadeProduzida), valorPorUnidade: Number(values.valorPorUnidade) } : {}) 
-    } as unknown as NovoColaborador; 
-    
-    setSending(true); 
-    try { 
-      await api.cadastrar(body); 
-      notify('Colaborador cadastrado com sucesso.'); 
-      navigate('/colaboradores'); 
-    } catch (err) { 
-      notify(err instanceof ApiError ? err.message : 'Não foi possível cadastrar o colaborador. Verifique se a matrícula já existe.', true); 
-    } finally { 
-      setSending(false); 
-    } 
+      ...(type === 'COMISSIONADO' ? { valorVendas: Number(values.valorVendas), percentualComissao: Number(values.percentualComissao) } : {}),
+      ...(type === 'PRODUCAO' ? { quantidadeProduzida: Number(values.quantidadeProduzida), valorPorUnidade: Number(values.valorPorUnidade) } : {})
+    } as unknown as NovoColaborador;
+
+    setSending(true);
+    try {
+      await api.cadastrar(body);
+      notify('Colaborador cadastrado com sucesso.');
+      navigate('/colaboradores');
+    } catch (err) {
+      notify(err instanceof ApiError ? err.message : 'Não foi possível cadastrar o colaborador. Verifique se a matrícula já existe.', true);
+    } finally {
+      setSending(false);
+    }
   }
-  
+
   return <><PageHeading eyebrow="GESTÃO DE PESSOAS" title="Novo colaborador" subtitle="Preencha os dados para incluir uma pessoa na folha."/><form className="form-layout" onSubmit={submit} noValidate><div className="form-main"><section className="panel form-panel"><div className="form-section-title"><span className="step-number">01</span><div><h2>Dados cadastrais</h2><p>Informações de identificação e salário base.</p></div></div><div className="form-grid">
       <Field id="matricula" label="Matrícula" value={values.matricula} onChange={v => change('matricula', v)} placeholder="Ex.: 101" error={errors.matricula} required/>
       <Field id="nome" label="Nome completo" value={values.nome} onChange={v => change('nome', v)} placeholder="Ex.: Ana Souza" error={errors.nome} required/>
@@ -317,36 +336,36 @@ function Cadastro({ notify }: { notify: (s: string, error?: boolean) => void }) 
       <aside className="form-aside"><div className="aside-icon"><BriefcaseBusiness size={19}/></div><h3>Cadastro de colaborador</h3><p>A matrícula deve ser informada e única para cada funcionário no sistema.</p><div className="aside-separator"/><div className="aside-row"><Check size={15}/> Dados enviados à API real</div><div className="aside-row"><Check size={15}/> Cálculo oficial no backend</div><div className="aside-row"><Check size={15}/> Campos conforme o tipo escolhido</div></aside></form></>;
 }
 
-function Field({ id, label, value, onChange, placeholder, prefix, suffix, error, required, min, step }: { id: string; label: string; value: string; onChange: (value: string) => void; placeholder: string; prefix?: string; suffix?: string; error?: string; required?: boolean; min?: string; step?: string }) { 
+function Field({ id, label, value, onChange, placeholder, prefix, suffix, error, required }: { id: string; label: string; value: string; onChange: (value: string) => void; placeholder: string; prefix?: string; suffix?: string; error?: string; required?: boolean; min?: string; step?: string }) {
   const isText = id === 'nome' || id === 'matricula';
-  return <div className={`field ${error ? 'has-error' : ''}`}><label htmlFor={id}>{label} {required && <i>*</i>}</label><div className="input-wrap">{prefix && <span>{prefix}</span>}<input id={id} type="text" inputMode={isText ? 'text' : 'decimal'} value={isText ? value : value.replace('.', ',')} onChange={e => onChange(isText ? e.target.value : e.target.value.replace(',', '.'))} placeholder={placeholder} aria-invalid={!!error} aria-describedby={error ? `${id}-error` : undefined}/>{suffix && <span>{suffix}</span>}</div>{error ? <small className="field-error" id={`${id}-error`}>{error}</small> : <small>&nbsp;</small>}</div>; 
+  return <div className={`field ${error ? 'has-error' : ''}`}><label htmlFor={id}>{label} {required && <i>*</i>}</label><div className="input-wrap">{prefix && <span>{prefix}</span>}<input id={id} type="text" inputMode={isText ? 'text' : 'decimal'} value={isText ? value : value.replace('.', ',')} onChange={e => onChange(isText ? e.target.value : e.target.value.replace(',', '.'))} placeholder={placeholder} aria-invalid={!!error} aria-describedby={error ? `${id}-error` : undefined}/>{suffix && <span>{suffix}</span>}</div>{error ? <small className="field-error" id={`${id}-error`}>{error}</small> : <small>&nbsp;</small>}</div>;
 }
 
-function Folha() { 
+function Folha() {
   const [monthInput, setMonthInput] = useState(currentMonth());
   const periodoAPI = useMemo(() => formatToAPI(monthInput), [monthInput]);
 
-  const { data, loading, error, reload } = useData(() => api.detalhada(periodoAPI), [periodoAPI]); 
-  const sum = useData(() => api.resumo(periodoAPI), [periodoAPI]); 
-  
+  const { data, loading, error, reload } = useData(() => api.detalhada(periodoAPI), [periodoAPI]);
+  const sum = useData(() => api.resumo(periodoAPI), [periodoAPI]);
+
   return <><PageHeading eyebrow="REMUNERAÇÃO" title="Folha de pagamento" subtitle="Valores individuais calculados pelo backend para todos os colaboradores." action={<>
       <input type="month" className="button secondary" value={monthInput} onChange={e => setMonthInput(e.target.value)} style={{ padding: '0 10px', height: '36px', marginRight: '8px' }} />
       <button className="button secondary" onClick={() => window.print()}><FileBarChart2 size={16}/> Imprimir</button>
       <button className="button secondary" onClick={() => { void reload(); void sum.reload(); }}><RefreshCw size={16}/> Atualizar</button>
     </>}/>{(error || sum.error) && <ErrorPanel error={error || sum.error} retry={() => { void reload(); void sum.reload(); }}/>}<div className="payroll-banner"><div className="banner-icon"><Banknote size={21}/></div><div><span>VALOR TOTAL DA FOLHA</span>
     <strong>{sum.loading ? '—' : money((sum.data as any)?.valorTotal)}</strong></div><div className="banner-count">
-    <b>{sum.loading ? '—' : (sum.data as any)?.totalColaboradores ?? 0}</b><span>colaboradores</span></div><div className="calculated-label"><i/> Calculado pela API</div></div><section className="panel table-panel"><div className="panel-heading"><div><h2>Detalhamento individual</h2><p>Salário base e salário final por colaborador</p></div><span className="record-count">{data?.length ?? 0} registros</span></div>{loading ? <Loading rows={6}/> : data?.length ? <PayrollTable rows={data}/> : !error ? <Empty title="Folha sem colaboradores" description="Quando houver colaboradores cadastrados, o detalhamento aparecerá aqui." action={<Link className="button primary" to="/colaboradores/novo"><Plus size={16}/> Cadastrar colaborador</Link>}/> : null}</section><p className="page-footnote">A API fornece salário base e salário final. Detalhes de adicionais estão disponíveis no cadastro do colaborador.</p></>; 
+    <b>{sum.loading ? '—' : (sum.data as any)?.totalColaboradores ?? 0}</b><span>colaboradores</span></div><div className="calculated-label"><i/> Calculado pela API</div></div><section className="panel table-panel"><div className="panel-heading"><div><h2>Detalhamento individual</h2><p>Salário base e salário final por colaborador</p></div><span className="record-count">{data?.length ?? 0} registros</span></div>{loading ? <Loading rows={6}/> : data?.length ? <PayrollTable rows={data}/> : !error ? <Empty title="Folha sem colaboradores" description="Quando houver colaboradores cadastrados, o detalhamento aparecerá aqui." action={<Link className="button primary" to="/colaboradores/novo"><Plus size={16}/> Cadastrar colaborador</Link>}/> : null}</section><p className="page-footnote">A API fornece salário base e salário final. Detalhes de adicionais estão disponíveis no cadastro do colaborador.</p></>;
 }
 
-function Relatorios() { 
+function Relatorios() {
   const periodoAPI = useMemo(() => formatToAPI(currentMonth()), []);
-  const summary = useData(() => api.resumo(periodoAPI)); 
-  const detail = useData(() => api.detalhada(periodoAPI)); 
-  const byType = useMemo(() => (detail.data ?? []).reduce((acc, item) => { acc[kind((item as any).tipo || (item as any).tipoColaborador)] += 1; return acc; }, { PADRAO: 0, COMISSIONADO: 0, PRODUCAO: 0 } as Record<TipoColaborador, number>), [detail.data]); 
+  const summary = useData(() => api.resumo(periodoAPI));
+  const detail = useData(() => api.detalhada(periodoAPI));
+  const byType = useMemo(() => (detail.data ?? []).reduce((acc, item) => { acc[kind((item as any).tipo || (item as any).tipoColaborador)] += 1; return acc; }, { PADRAO: 0, COMISSIONADO: 0, PRODUCAO: 0 } as Record<TipoColaborador, number>), [detail.data]);
   return <><PageHeading eyebrow="ANÁLISE DA FOLHA" title="Relatórios" subtitle="Resumo consolidado e composição dos colaboradores cadastrados." action={<button className="button secondary" onClick={() => { void summary.reload(); void detail.reload(); }}><RefreshCw size={16}/> Atualizar</button>}/>{(summary.error || detail.error) && <ErrorPanel error={summary.error || detail.error} retry={() => { void summary.reload(); void detail.reload(); }}/>}<div className="stats-grid reports-stats">
     <StatCard title="Colaboradores" value={summary.loading ? '—' : String((summary.data as any)?.totalColaboradores ?? 0)} sub="Total cadastrado" icon={<UsersRound size={18}/>} accent="blue"/>
     <StatCard title="Valor total da folha" value={summary.loading ? '—' : money((summary.data as any)?.valorTotal)} sub="Soma dos salários finais" icon={<Banknote size={18}/>} accent="green"/>
-    </div><section className="panel report-panel"><div className="panel-heading"><div><h2>Colaboradores por categoria</h2><p>Distribuição calculada a partir do relatório detalhado.</p></div><span className="panel-icon"><FileBarChart2 size={18}/></span></div>{detail.loading ? <Loading rows={3}/> : <div className="report-categories">{(['PADRAO', 'COMISSIONADO', 'PRODUCAO'] as TipoColaborador[]).map(t => { const total = detail.data?.length ?? 0; const value = byType[t]; const share = total ? Math.round(value / total * 100) : 0; return <div className="category-card" key={t}><div className="category-top"><Badge type={t}/><span>{share}%</span></div><strong>{value}</strong><small>colaboradores</small><div className="meter"><i className={t.toLowerCase()} style={{ width: `${share}%` }}/></div></div>; })}</div>}<p className="report-note">O resumo da API contém quantidade total e valor total da folha. Totais financeiros por categoria não são disponibilizados pelo backend.</p></section></>; 
+    </div><section className="panel report-panel"><div className="panel-heading"><div><h2>Colaboradores por categoria</h2><p>Distribuição calculada a partir do relatório detalhado.</p></div><span className="panel-icon"><FileBarChart2 size={18}/></span></div>{detail.loading ? <Loading rows={3}/> : <div className="report-categories">{(['PADRAO', 'COMISSIONADO', 'PRODUCAO'] as TipoColaborador[]).map(t => { const total = detail.data?.length ?? 0; const value = byType[t]; const share = total ? Math.round(value / total * 100) : 0; return <div className="category-card" key={t}><div className="category-top"><Badge type={t}/><span>{share}%</span></div><strong>{value}</strong><small>colaboradores</small><div className="meter"><i className={t.toLowerCase()} style={{ width: `${share}%` }}/></div></div>; })}</div>}<p className="report-note">O resumo da API contém quantidade total e valor total da folha. Totais financeiros por categoria não são disponibilizados pelo backend.</p></section></>;
 }
 
 export default App;
