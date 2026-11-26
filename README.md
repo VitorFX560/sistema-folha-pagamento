@@ -1,26 +1,63 @@
-# Sistema de Gestão de Folha de Pagamento - Grupo 06
+# Folha Pay — Sistema de Folha de Pagamento
 
-## Visão Geral
-Este projeto é uma aplicação web para o processamento e gestão de folhas de pagamento de colaboradores. O backend é uma API REST desenvolvida em Java com Spring Boot, e o frontend foi desenvolvido como uma Single Page Application (SPA) utilizando React.
+Sistema web para gerenciamento de colaboradores, cálculo automático de remunerações (Padrão, Comissionado e Produção) e consolidação de folha de pagamento.
 
-> **Nota Importante:** Toda a modelagem do projeto, incluindo Especificação de Requisitos, Documento de Arquitetura, EAP, Cronograma, Responsáveis e Plano de Qualidade/Testes, encontra-se detalhada no documento oficial da entrega acadêmica (Entregável A1).
+## Tecnologias Utilizadas
+- **Backend:** Java 21, Spring Boot, Spring Security (JWT), Spring Data JPA / Hibernate
+- **Frontend:** React + Vite
+- **Banco de Dados:** PostgreSQL (estratégia JPA `InheritanceType.JOINED`)
 
-##  Como Executar o Projeto
+---
 
-1. **Clone o repositório para a sua máquina:**
-   `git clone https://github.com/VitorFX560/sistema-folha-pagamento.git`
+## Pré-requisitos
+Antes de começar, certifique-se de ter instalado na máquina:
+- [Java 21 (JDK)](https://adoptium.net/)
+- [Node.js (LTS)](https://nodejs.org/)
+- [PostgreSQL](https://www.postgresql.org/) (com pgAdmin ou `psql`)
+- [Git](https://git-scm.com/)
 
-2. **Aceda à pasta principal do projeto:**
-   `cd sistema-folha-pagamento`
+---
 
-3. **Inicie o servidor backend (Spring Boot):**
-   `mvnw clean spring-boot:run`
+## Como rodar o projeto localmente (Branch `develop`)
 
-4. **Acesso à Aplicação (Frontend):**
-   Com o backend a correr, aceda à interface web através do seu navegador no link: `http://localhost:5173/`
+### 1. Clonar o repositório
+```bash
+git clone -b develop [https://github.com/VitorFX560/sistema-folha-pagamento.git](https://github.com/VitorFX560/sistema-folha-pagamento.git)
+cd sistema-folha-pagamento
+```
 
-##  Acesso à API e Base de Dados
-Durante o desenvolvimento, o servidor Tomcat embutido corre na porta `8080` e utiliza o banco de dados em memória H2.
+### 2. Configurar o Banco de Dados (PostgreSQL)
+1. Crie um banco de dados vazio chamado **`folha_pagamento`**.
+2. Execute os scripts localizados na pasta `database/` na seguinte ordem:
+   - `database/01_schema.sql` (cria as tabelas e restrições)
+   - `database/02_seed.sql` (insere a carga inicial de 6 colaboradores)
+3. Abra o arquivo `src/main/resources/application.properties` e ajuste o usuário e a senha do PostgreSQL conforme a configuração da sua máquina:
+   ```properties
+   spring.datasource.username=postgres
+   spring.datasource.password=SUA_SENHA_AQUI
+   ```
 
-* **Testes de API:** Aponte as suas requisições REST (via Postman/Thunder Client) para `http://localhost:8080/` (ex: `POST http://localhost:8080/colaboradores`).
-* **Consola do Banco de Dados:** Valide os dados persistidos em memória acedendo a `http://localhost:8080/h2-console`.
+### 3. Executar o Backend (Spring Boot)
+Na raiz do projeto, rode:
+```bash
+./mvnw spring-boot:run
+```
+*(Ou execute a classe principal diretamente pela extensão Java no VS Code).*
+
+### 4. Executar o Frontend (React + Vite)
+Em um **segundo terminal**, acesse a pasta do frontend, instale as dependências e inicie o servidor:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Acesse a aplicação pelo endereço exibido no terminal (geralmente `http://localhost:5173`).
+
+---
+
+## Fluxo de Versionamento (GitFlow)
+Seguindo o Plano de Garantia da Qualidade do projeto, **não faça alterações diretas em `develop` ou `main`**:
+- **Novas tarefas (incluindo criação de testes):** crie uma branch `feature/nome-da-feature` a partir da `develop`.
+- **Correções de bugs encontrados nos testes:** crie uma branch `fix/nome-do-bug` a partir da `develop`.
+- **Commits:** utilize o padrão *Conventional Commits* (`feat:`, `fix:`, `docs:`).
+- **Pull Request:** toda alteração deve ser mesclada na `develop` via Pull Request com *Code Review* prévio.
